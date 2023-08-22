@@ -1,0 +1,109 @@
+[
+  {
+    "id": "da37e92812ec02664029906516971b5d",
+    "parentId": null,
+    "path": "sciO",
+    "sortIndex": 1,
+    "level": 1,
+    "appId": "Ncj4hBQNAW7xPPSS",
+    "owner": "iot",
+    "name": "sdk示例",
+    "code": "sdk-view",
+    "icon": null,
+    "url": "/sdk",
+    "buttons": null,
+    "accessSupport": {
+      "text": "不支持",
+      "value": "unsupported"
+    },
+    "assetType": null,
+    "indirectMenus": null,
+    "assetAccesses": [],
+    "options": null,
+    "children": [
+      {
+        "id": "26774430de43940d7409b5553be9b6ab",
+        "parentId": "da37e92812ec02664029906516971b5d",
+        "path": "sciO-4gPW",
+        "sortIndex": 101,
+        "level": 2,
+        "appId": "Ncj4hBQNAW7xPPSS",
+        "owner": "iot",
+        "name": "设备管理",
+        "code": "sdk-device",
+        "icon": null,
+        "url": "/device.html",
+        "buttons": [
+          {
+            "id": "view",
+            "name": "查看",
+            "description": null,
+            "options": null,
+            "enabled": true,
+            "granted": true
+          },
+          {
+            "id": "add",
+            "name": "新增",
+            "description": null,
+            "options": null,
+            "enabled": true,
+            "granted": true
+          },
+          {
+            "id": "update",
+            "name": "编辑",
+            "description": null,
+            "options": null,
+            "enabled": true,
+            "granted": true
+          }
+        ],
+        "accessSupport": {
+          "text": "支持",
+          "value": "support"
+        },
+        "assetType": "device",
+        "indirectMenus": [],
+        "assetAccesses": [
+          {
+            "supportId": "ignore",
+            "name": "全部数据",
+            "enabled": false,
+            "granted": true,
+            "priority": 2147483647
+          },
+          {
+            "supportId": "org-include-children",
+            "name": "所在组织及下级组织",
+            "enabled": false,
+            "granted": false,
+            "priority": 200
+          },
+          {
+            "supportId": "org",
+            "name": "所在组织",
+            "enabled": false,
+            "granted": false,
+            "priority": 100
+          },
+          {
+            "supportId": "creator",
+            "name": "自己创建的",
+            "enabled": false,
+            "granted": false,
+            "priority": -2147483648
+          }
+        ],
+        "options": {},
+        "children": null,
+        "createTime": 1692353989241,
+        "accessDescription": null,
+        "granted": true
+      }
+    ],
+    "createTime": 1692353989208,
+    "accessDescription": null,
+    "granted": false
+  }
+]

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body><h3>用户中台示例</h3>
+
+<div>
+    <div>
+        登录入口：
+    </div>
+    <br>
+    <input type="button" onclick="login()" value="登录">
+</div>
+<br>
+<div>
+    <div>
+        <a href="user.html">用户中心</a>
+    </div>
+</div>
+<br>
+<div>
+    <div>
+        <a href="device.html">设备管理</a>
+    </div>
+</div>
+
+<script src="js/jquery-3.7.0.min.js"></script>
+<script>
+    function login() {
+        $.ajax({
+            url: "/client/config",
+            type: "GET",
+            data: {},
+            contentType: "application/json",
+            withCredential: true,
+            dataType: 'json',
+            success: function (data) {
+                console.log(data);
+                window.location.href="/api/application/sso/" + data.result.clientId + "/login";
+            },
+            error: function (err) {
+                console.log(err);
+            }
+        });
+
+    }
+
+    var token = localStorage.getItem("X-Access-Token");
+
+    $.ajaxSetup({
+        beforeSend: function (jqXHR, settings) {
+            jqXHR.setRequestHeader("X-Access-Token", token);
+        }
+    });
+
+</script>
+
+
+</body>
+</html>

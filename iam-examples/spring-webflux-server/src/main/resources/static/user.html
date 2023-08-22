@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body><h3>用户中心示例</h3>
+
+<div>
+    <div>
+        用户接口：
+    </div>
+    <br>
+    <input type="button" onclick="userInfo()" value="当前用户信息">
+    <div id="user_info"></div>
+    <br>
+    <input type="button" onclick="userMenu()" value="当前用户菜单">
+    <div id="user_menu"></div>
+    <br>
+    <input type="button" onclick="userAuth()" value="当前用户权限">
+    <div id="user_auth"></div>
+</div>
+<br>
+
+<script src="js/jquery-3.7.0.min.js"></script>
+<script>
+    var token = localStorage.getItem("X-Access-Token");
+
+    $.ajaxSetup({
+        beforeSend: function (jqXHR, settings) {
+            jqXHR.setRequestHeader("X-Access-Token", token);
+        }
+    });
+
+    function userInfo() {
+        $.ajax({
+            url: "/user/detail",
+            type: "GET",
+            data: {},
+            contentType: "application/json",
+            withCredential: true,
+            dataType: 'json',
+            success: function (data) {
+                console.log(data);
+                document.getElementById("user_info").innerText = JSON.stringify(data, null, 8);
+            },
+            error: function (err) {
+                console.log(err);
+                document.getElementById("user_info").innerText = JSON.stringify(err.responseJSON, null, 8);
+            }
+        });
+    }
+
+    function userMenu() {
+        $.ajax({
+            url: "/user/menu",
+            type: "GET",
+            data: {},
+            contentType: "application/json",
+            withCredential: true,
+            dataType: 'json',
+            success: function (data) {
+                console.log(data);
+                document.getElementById("user_menu").innerText = JSON.stringify(data, null, 8);
+            },
+            error: function (err) {
+                console.log(err);
+                document.getElementById("user_menu").innerText = JSON.stringify(err.responseJSON, null, 8);
+            }
+        });
+    }
+
+    function userAuth() {
+        $.ajax({
+            url: "/authorize/me",
+            type: "GET",
+            data: {},
+            contentType: "application/json",
+            withCredential: true,
+            dataType: 'json',
+            success: function (data) {
+                console.log(data);
+                document.getElementById("user_auth").innerText = JSON.stringify(data, null, 8);
+            },
+            error: function (err) {
+                console.log(err);
+                document.getElementById("user_auth").innerText = JSON.stringify(err.responseJSON, null, 8);
+            }
+        });
+    }
+
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+org.jetlinks.iam.sdk.configuration.SdkConfiguration
+org.jetlinks.iam.sdk.web.ClientConfigController
+org.jetlinks.iam.sdk.web.MenuController
+org.jetlinks.iam.sdk.web.SsoController
+org.jetlinks.iam.sdk.web.SsoLoginController
