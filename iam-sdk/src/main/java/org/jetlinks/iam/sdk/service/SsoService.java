@@ -1,12 +1,12 @@
 package org.jetlinks.iam.sdk.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.net.URLCodec;
 import org.hswebframework.utils.RandomUtil;
 import org.jetlinks.iam.core.command.NotifySsoCommand;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.service.ApiClientService;
 import org.jetlinks.iam.core.service.SsoHandler;
-import org.jetlinks.core.message.codec.http.HttpUtils;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ServerWebExchange;
@@ -32,6 +32,8 @@ public class SsoService {
 
     private final List<SsoHandler> ssoHandlers = new ArrayList<>();
 
+    private static final URLCodec urlCodec = new URLCodec();
+
     public SsoService(ApiClientService apiClientService,
                       ApiClientConfig config,
                       ObjectProvider<SsoHandler> objectProvider) {
@@ -50,13 +52,13 @@ public class SsoService {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(config.getClientApiPath())
                 .path("/application/sso/notify");
-        parameters.forEach((k, v) -> builder.queryParam(k, HttpUtils.urlEncode(v)));
+        parameters.forEach((k, v) -> builder.queryParam(k, urlEncode(v)));
 
         return Mono
                 .just(
                         UriComponentsBuilder
                                 .fromUriString(config.getAuthorizationUrl())
-                                .queryParam("redirect_uri", HttpUtils.urlEncode(builder.build().toUriString()))
+                                .queryParam("redirect_uri", urlEncode(builder.build().toUriString()))
                                 .queryParam("client_id", config.getClientId())
                                 .queryParam("scope", "*")
                                 .queryParam("state", state)
@@ -70,7 +72,8 @@ public class SsoService {
 
     /**
      * 处理登录后的回调
-     * @param exchange 请求
+     *
+     * @param exchange  请求
      * @param parameter 请求参数
      * @return Void
      */
@@ -92,7 +95,7 @@ public class SsoService {
                             .fromUriString(config.getTokenSetUrl())
                             .queryParam("sso", "true")
                             .queryParam("token", result.getToken().getAccessToken())
-                            .queryParam("redirect", HttpUtils.urlEncode(sourceRedirect))
+                            .queryParam("redirect", urlEncode(sourceRedirect))
                             .build(true)
                             .toUri();
                     exchange.getResponse().setStatusCode(HttpStatus.FOUND);
@@ -101,4 +104,21 @@ public class SsoService {
                 .then();
     }
 
+    public static String urlDecode(String url) {
+        try {
+            return urlCodec.decode(url);
+        } catch (Throwable err) {
+            log.error("decode url error", err);
+            return null;
+        }
+    }
+
+    public static String urlEncode(String url) {
+        try {
+            return urlCodec.encode(url);
+        } catch (Throwable err) {
+            log.error("encode url error", err);
+            return null;
+        }
+    }
 }

@@ -2,10 +2,8 @@ package org.jetlinks.iam.core.request;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.hswebframework.web.crud.web.ResponseMessage;
-import org.jetlinks.core.command.Command;
+import org.jetlinks.iam.core.command.Command;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 /**
  * 应用请求定义.

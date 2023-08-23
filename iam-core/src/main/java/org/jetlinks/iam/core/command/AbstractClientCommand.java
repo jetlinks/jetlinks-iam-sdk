@@ -2,7 +2,6 @@ package org.jetlinks.iam.core.command;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.jetlinks.core.command.Command;
 import reactor.core.publisher.Mono;
 
 /**

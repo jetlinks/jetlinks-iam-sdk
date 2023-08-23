@@ -1,14 +1,13 @@
 package org.jetlinks.iam.core.service;
 
 import org.hswebframework.web.exception.I18nSupportException;
+import org.jetlinks.iam.core.command.Command;
 import org.jetlinks.iam.core.command.GetApiClient;
 import org.jetlinks.iam.core.command.GetWebsocketClient;
 import org.jetlinks.iam.core.command.NotifySsoCommand;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.entity.SsoResult;
 import org.jetlinks.iam.core.websocket.ApplicationWebSocketClient;
-import org.jetlinks.core.command.Command;
-import org.jetlinks.core.command.CommandSupport;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
@@ -21,7 +20,7 @@ import javax.annotation.Nonnull;
  *
  * @author zhangji 2023/8/2
  */
-public class ApiClientService implements CommandSupport {
+public class ApiClientService {
 
     private final WebClient.Builder clientBuilder;
 
@@ -44,7 +43,6 @@ public class ApiClientService implements CommandSupport {
     }
 
     @Nonnull
-    @Override
     @SuppressWarnings("unchecked")
     public <R> R execute(@Nonnull Command<R> command) {
         if (command instanceof NotifySsoCommand) {

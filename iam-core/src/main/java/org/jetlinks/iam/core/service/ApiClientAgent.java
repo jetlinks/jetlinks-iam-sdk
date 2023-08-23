@@ -7,13 +7,13 @@ import org.jetlinks.iam.core.command.GetWebsocketClient;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.websocket.SubscribeRequest;
 import org.jetlinks.iam.core.websocket.SubscribeResponse;
-import org.jetlinks.core.utils.Reactors;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.util.concurrent.Queues;
 
 import java.net.URI;
 import java.time.Duration;
@@ -79,7 +79,10 @@ public class ApiClientAgent {
                 .type(SubscribeRequest.Type.sub)
                 .topic("/application/" + config.getClientId() + "/auth-changed")
                 .build();
-        handler.sender.emitNext(JSONObject.toJSONString(request), Reactors.emitFailureHandler());
+        handler.sender.emitNext(
+                JSONObject.toJSONString(request),
+                (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED
+        );
 
         return Flux
                 .merge(
@@ -99,10 +102,14 @@ public class ApiClientAgent {
                 .then();
     }
 
+    private static <T> Sinks.Many<T> createMany() {
+        return Sinks.many().multicast().onBackpressureBuffer(Queues.SMALL_BUFFER_SIZE, false);
+    }
+
     static class ProxyWebSocketHandler implements WebSocketHandler, Disposable {
 
-        private final Sinks.Many<ProxyData> receiver = Reactors.createMany();
-        private final Sinks.Many<String> sender = Reactors.createMany();
+        private final Sinks.Many<ProxyData> receiver = createMany();
+        private final Sinks.Many<String> sender = createMany();
 
         private WebSocketSession session;
 
@@ -111,15 +118,20 @@ public class ApiClientAgent {
         public Mono<Void> handle(WebSocketSession session) {
             String sessionId = UUID.randomUUID().toString();
             receiver.emitNext(new ProxyData(sessionId, ProxyDataType.connected, null),
-                              Reactors.emitFailureHandler());
+                              (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED);
             closeSession();
             this.session = session;
             return Flux.merge(
                     session.send(sender.asFlux().map(session::textMessage)),
                     session
                             .receive()
-                            .doOnNext(msg -> receiver.emitNext(new ProxyData(sessionId, ProxyDataType.data, msg.getPayloadAsText()),
-                                                               Reactors.emitFailureHandler())))
+                            .doOnNext(msg -> receiver
+                                    .emitNext(new ProxyData(
+                                                      sessionId,
+                                                      ProxyDataType.data,
+                                                      msg.getPayloadAsText()
+                                              ),
+                                              (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED)))
                        .then();
 
         }
