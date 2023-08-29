@@ -33,7 +33,7 @@ public class UserMenuRequest extends ApiRequest<Flux<MenuView>> {
     public Flux<MenuView> execute() {
         return getClient()
                 .get()
-                .uri("/menu/app/" + clientId + "/tree")
+                .uri("/menu/user-own/tree?terms[0].column=appId&terms[0].value=" + clientId)
                 .headers(headers -> headers.setBearerAuth(getToken()))
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ResponseMessage<List<MenuView>>>() {
