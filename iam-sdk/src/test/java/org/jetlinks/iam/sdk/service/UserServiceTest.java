@@ -109,10 +109,9 @@ public class UserServiceTest {
 
         MenuService menuService = Mockito.mock(MenuService.class);
         MenuEntity menuEntity = new MenuEntity();
-        menuEntity.setOwner("sdk");
         Mockito.when(menuService.getAllMenu()).thenReturn(Collections.singletonList(menuEntity));
 
-        PermissionCodec codec = new DefaultPermissionCodec(menuService);
+        PermissionCodec codec = new DefaultPermissionCodec("sdk", menuService);
 
         return new UserService(
                 config, new UserRequestSender(), ssoService, apiClientService, codec

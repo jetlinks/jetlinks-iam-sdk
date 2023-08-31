@@ -62,9 +62,8 @@ public class ApiClientConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(PermissionCodec.class)
-    public PermissionCodec defaultPermissionCodec(MenuService menuService) {
-        return new DefaultPermissionCodec(menuService);
+    public PermissionCodec defaultPermissionCodec(ApiClientConfig config, MenuService menuService) {
+        return new DefaultPermissionCodec(config.getClientId(), menuService);
     }
 
 }

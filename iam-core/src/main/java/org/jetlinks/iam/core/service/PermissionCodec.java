@@ -9,7 +9,9 @@ import reactor.core.publisher.Mono;
  */
 public interface PermissionCodec {
 
-    String encode(String permission, String owner);
+    String getAppId();
+
+    String encode(String permission);
 
     String decode(String permission);
 

@@ -165,20 +165,20 @@ public class MenuEntity extends GenericTreeSortSupportEntity<String> {
         }
         if (CollectionUtils.isNotEmpty(permissions)) {
             for (PermissionInfo permission : permissions) {
-                permission.setPermission(permissionCodec.encode(permission.getPermission(), owner));
+                permission.setPermission(permissionCodec.encode(permission.getPermission()));
             }
         }
         if (CollectionUtils.isNotEmpty(buttons)) {
             for (MenuButtonInfo button : buttons) {
                 if (CollectionUtils.isNotEmpty(button.getPermissions())) {
                     for (PermissionInfo permission : button.getPermissions()) {
-                        permission.setPermission(permissionCodec.encode(permission.getPermission(), owner));
+                        permission.setPermission(permissionCodec.encode(permission.getPermission()));
                     }
                 }
             }
         }
         if (StringUtils.hasText(assetType)) {
-            this.assetType = permissionCodec.encode(assetType, owner);
+            this.assetType = permissionCodec.encode(assetType);
         }
         this.encoded = true;
 
