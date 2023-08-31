@@ -22,14 +22,17 @@ import java.util.Map;
  */
 public class AuthenticationRequest extends ApiRequest<Mono<Authentication>> {
 
+    private final String clientId;
+
     private final PermissionCodec permissionCodec;
 
     private static final AuthenticationBuilderFactory builder = new SimpleAuthenticationBuilderFactory(
             new SimpleDataAccessConfigBuilderFactory()
     );
 
-    public AuthenticationRequest(String token, WebClient client, PermissionCodec permissionCodec) {
+    public AuthenticationRequest(String clientId, String token, WebClient client, PermissionCodec permissionCodec) {
         super(token, client);
+        this.clientId = clientId;
         this.permissionCodec = permissionCodec;
     }
 
@@ -37,7 +40,7 @@ public class AuthenticationRequest extends ApiRequest<Mono<Authentication>> {
     public Mono<Authentication> execute() {
         return getClient()
                 .get()
-                .uri("/authorize/me")
+                .uri("/application/" + clientId + "/authorize/me")
                 .headers(headers -> headers.setBearerAuth(getToken()))
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<ResponseMessage<Map<String, Object>>>() {

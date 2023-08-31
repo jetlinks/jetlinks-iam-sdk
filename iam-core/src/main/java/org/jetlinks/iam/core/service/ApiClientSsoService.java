@@ -67,7 +67,9 @@ public class ApiClientSsoService {
                         }))
                 // 获取用户权限
                 .flatMap(result -> userService
-                        .execute(new AuthenticationRequest(result.getToken().getAccessToken(), client, permissionCodec))
+                        .execute(new AuthenticationRequest(
+                                config.getClientId(), result.getToken().getAccessToken(), client, permissionCodec)
+                        )
                         // 使用此token登录当前用户
                         .flatMap(authentication -> this.signIn(
                                 result.getToken().getAccessToken(), authentication, result.getExpiresMillis()

@@ -84,7 +84,9 @@ public class UserService {
         return Mono
                 .zip(parseToken(exchange), clientMono)
                 .flatMap(tp2 -> sender
-                        .execute(new AuthenticationRequest(tp2.getT1().getToken(), tp2.getT2(), permissionCodec))
+                        .execute(new AuthenticationRequest(
+                                config.getClientId(), tp2.getT1().getToken(), tp2.getT2(), permissionCodec)
+                        )
                         .flatMap(authentication -> apiClientSsoService
                                 .signIn(tp2.getT1().getToken(), authentication, null)
                                 .thenReturn(authentication)));
