@@ -8,8 +8,6 @@ import org.hswebframework.web.api.crud.entity.GenericTreeSortSupportEntity;
 import org.hswebframework.web.utils.DigestUtils;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.enums.AccessSupportState;
-import org.jetlinks.iam.core.service.PermissionCodec;
-import org.springframework.util.StringUtils;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
@@ -146,69 +144,11 @@ public class MenuEntity extends GenericTreeSortSupportEntity<String> {
                 .findAny();
     }
 
-    public MenuEntity init(PermissionCodec permissionCodec) {
+    public MenuEntity init() {
         if (getId() == null) {
             generateId();
         }
         tryValidate();
-        return encodePermission(permissionCodec);
-    }
-
-    /**
-     * 编码权限ID
-     * @param permissionCodec 编解码类
-     * @return 菜单
-     */
-    public MenuEntity encodePermission(PermissionCodec permissionCodec) {
-        if (this.encoded) {
-            return this;
-        }
-        if (CollectionUtils.isNotEmpty(permissions)) {
-            for (PermissionInfo permission : permissions) {
-                permission.setPermission(permissionCodec.encode(permission.getPermission()));
-            }
-        }
-        if (CollectionUtils.isNotEmpty(buttons)) {
-            for (MenuButtonInfo button : buttons) {
-                if (CollectionUtils.isNotEmpty(button.getPermissions())) {
-                    for (PermissionInfo permission : button.getPermissions()) {
-                        permission.setPermission(permissionCodec.encode(permission.getPermission()));
-                    }
-                }
-            }
-        }
-        if (StringUtils.hasText(assetType)) {
-            this.assetType = permissionCodec.encode(assetType);
-        }
-        this.encoded = true;
-
-        return this;
-    }
-
-    /**
-     * 解码权限ID
-     * @param permissionCodec 编解码类
-     * @return 菜单
-     */
-    public MenuEntity decodePermission(PermissionCodec permissionCodec) {
-        if (CollectionUtils.isNotEmpty(permissions)) {
-            for (PermissionInfo permission : permissions) {
-                permission.setPermission(permissionCodec.decode(permission.getPermission()));
-            }
-        }
-        if (CollectionUtils.isNotEmpty(buttons)) {
-            for (MenuButtonInfo button : buttons) {
-                if (CollectionUtils.isNotEmpty(button.getPermissions())) {
-                    for (PermissionInfo permission : button.getPermissions()) {
-                        permission.setPermission(permissionCodec.decode(permission.getPermission()));
-                    }
-                }
-            }
-        }
-        if (StringUtils.hasText(assetType)) {
-            this.assetType = permissionCodec.decode(assetType);
-        }
-
         return this;
     }
 }

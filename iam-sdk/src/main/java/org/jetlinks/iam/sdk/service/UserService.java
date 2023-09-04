@@ -11,7 +11,6 @@ import org.jetlinks.iam.core.request.UserDetailRequest;
 import org.jetlinks.iam.core.request.UserMenuRequest;
 import org.jetlinks.iam.core.service.ApiClientService;
 import org.jetlinks.iam.core.service.ApiClientSsoService;
-import org.jetlinks.iam.core.service.PermissionCodec;
 import org.jetlinks.iam.core.service.UserRequestSender;
 import org.jetlinks.iam.core.utils.TokenUtils;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -34,18 +33,14 @@ public class UserService {
 
     private final Mono<WebClient> clientMono;
 
-    private final PermissionCodec permissionCodec;
-
     public UserService(ApiClientConfig config,
                        UserRequestSender sender,
                        ApiClientSsoService apiClientSsoService,
-                       ApiClientService apiClientService,
-                       PermissionCodec permissionCodec) {
+                       ApiClientService apiClientService) {
         this.config = config;
         this.sender = sender;
         this.apiClientSsoService = apiClientSsoService;
         this.clientMono = apiClientService.execute(new GetApiClient());
-        this.permissionCodec = permissionCodec;
     }
 
     /**
@@ -70,7 +65,7 @@ public class UserService {
         return Mono
                 .zip(parseToken(exchange), clientMono)
                 .flatMapMany(tp2 -> sender.execute(new UserMenuRequest(
-                        config.getClientId(), tp2.getT1().getToken(), tp2.getT2(), permissionCodec
+                        config.getClientId(), tp2.getT1().getToken(), tp2.getT2()
                 )));
     }
 
@@ -85,7 +80,7 @@ public class UserService {
                 .zip(parseToken(exchange), clientMono)
                 .flatMap(tp2 -> sender
                         .execute(new AuthenticationRequest(
-                                config.getClientId(), tp2.getT1().getToken(), tp2.getT2(), permissionCodec)
+                                config.getClientId(), tp2.getT1().getToken(), tp2.getT2())
                         )
                         .flatMap(authentication -> apiClientSsoService
                                 .signIn(tp2.getT1().getToken(), authentication, null)

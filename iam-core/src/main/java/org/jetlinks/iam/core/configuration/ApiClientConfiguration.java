@@ -6,7 +6,6 @@ import org.jetlinks.iam.core.filter.ApiClientTokenFilter;
 import org.jetlinks.iam.core.service.*;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,9 +23,8 @@ public class ApiClientConfiguration {
     public ApiClientSsoService apiClientSsoService(UserTokenManager userTokenManager,
                                                    UserRequestSender userService,
                                                    ApiClientConfig config,
-                                                   UserTokenReactiveAuthenticationSupplier authenticationSupplier,
-                                                   PermissionCodec permissionCodec) {
-        return new ApiClientSsoService(userTokenManager, userService, config, authenticationSupplier, permissionCodec);
+                                                   UserTokenReactiveAuthenticationSupplier authenticationSupplier) {
+        return new ApiClientSsoService(userTokenManager, userService, config, authenticationSupplier);
     }
 
     @Bean
@@ -59,11 +57,6 @@ public class ApiClientConfiguration {
         MenuService menuService = new MenuService(menuProperties);
         providers.forEach(provider -> menuService.add(provider.get()));
         return menuService;
-    }
-
-    @Bean
-    public PermissionCodec defaultPermissionCodec(ApiClientConfig config, MenuService menuService) {
-        return new DefaultPermissionCodec(config.getClientId(), menuService);
     }
 
 }

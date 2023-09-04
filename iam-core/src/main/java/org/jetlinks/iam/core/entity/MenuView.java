@@ -8,13 +8,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.web.api.crud.entity.GenericTreeSortSupportEntity;
 import org.hswebframework.web.bean.FastBeanCopier;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.iam.core.enums.AccessSupportState;
-import org.jetlinks.iam.core.service.PermissionCodec;
-import org.springframework.util.StringUtils;
 
 import javax.validation.constraints.NotBlank;
 import java.io.Serializable;
@@ -63,7 +60,7 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
     private List<ButtonView> buttons;
 
     @Schema(description = "数据权限控制")
-    @JSONField(name="access_support")
+    @JSONField(name = "access_support")
     private AccessSupportState accessSupport;
 
     @Schema(description = "资产类型")
@@ -340,12 +337,5 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
         return FastBeanCopier.copy(entity, new MenuView());
     }
 
-    public MenuView decodePermission(PermissionCodec permissionCodec) {
-        if (StringUtils.hasText(assetType)) {
-            this.assetType = permissionCodec.decode(assetType);
-        }
-
-        return this;
-    }
 }
 

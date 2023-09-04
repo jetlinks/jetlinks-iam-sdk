@@ -61,10 +61,9 @@ public class ApiClientServiceTest {
         MenuService menuService = Mockito.mock(MenuService.class);
         MenuEntity menuEntity = new MenuEntity();
         Mockito.when(menuService.getAllMenu()).thenReturn(Collections.singletonList(menuEntity));
-        PermissionCodec codec = new DefaultPermissionCodec("sdk", menuService);
 
         ApiClientSsoService ssoService = new ApiClientSsoService(
-                userTokenManager, new UserRequestSender(), config, authSupplier, codec);
+                userTokenManager, new UserRequestSender(), config, authSupplier);
 
         WebClient.Builder clientBuilder = Mockito.mock(WebClient.Builder.class);
         Mockito.when(clientBuilder.clone()).thenReturn(clientBuilder);

@@ -33,18 +33,14 @@ public class ApiClientSsoService {
 
     private final UserTokenReactiveAuthenticationSupplier authenticationSupplier;
 
-    private final PermissionCodec permissionCodec;
-
     public ApiClientSsoService(UserTokenManager userTokenManager,
                                UserRequestSender userService,
                                ApiClientConfig config,
-                               UserTokenReactiveAuthenticationSupplier authenticationSupplier,
-                               PermissionCodec permissionCodec) {
+                               UserTokenReactiveAuthenticationSupplier authenticationSupplier) {
         this.userTokenManager = userTokenManager;
         this.userService = userService;
         this.config = config;
         this.authenticationSupplier = authenticationSupplier;
-        this.permissionCodec = permissionCodec;
     }
 
     /**
@@ -68,7 +64,7 @@ public class ApiClientSsoService {
                 // 获取用户权限
                 .flatMap(result -> userService
                         .execute(new AuthenticationRequest(
-                                config.getClientId(), result.getToken().getAccessToken(), client, permissionCodec)
+                                config.getClientId(), result.getToken().getAccessToken(), client)
                         )
                         // 使用此token登录当前用户
                         .flatMap(authentication -> this.signIn(

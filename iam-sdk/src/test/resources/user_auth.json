@@ -9,7 +9,7 @@
   },
   "permissions": [
     {
-      "id": "device@sdk",
+      "id": "device",
       "name": "设备管理",
       "actions": [
         "query",

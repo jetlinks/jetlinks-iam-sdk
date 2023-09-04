@@ -27,9 +27,8 @@ public class SdkConfiguration {
     public UserService userService(ApiClientConfig config,
                                    UserRequestSender sender,
                                    ApiClientSsoService apiClientSsoService,
-                                   ApiClientService apiClientService,
-                                   PermissionCodec permissionCodec) {
-        return new UserService(config, sender, apiClientSsoService, apiClientService, permissionCodec);
+                                   ApiClientService apiClientService) {
+        return new UserService(config, sender, apiClientSsoService, apiClientService);
     }
 
 }

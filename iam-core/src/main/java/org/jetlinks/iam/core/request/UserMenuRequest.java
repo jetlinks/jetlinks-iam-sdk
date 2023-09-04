@@ -1,10 +1,8 @@
 package org.jetlinks.iam.core.request;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.hswebframework.web.crud.web.ResponseMessage;
 import org.hswebframework.web.exception.BusinessException;
 import org.jetlinks.iam.core.entity.MenuView;
-import org.jetlinks.iam.core.service.PermissionCodec;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -21,12 +19,9 @@ public class UserMenuRequest extends ApiRequest<Flux<MenuView>> {
 
     private final String clientId;
 
-    private final PermissionCodec permissionCodec;
-
-    public UserMenuRequest(String clientId, String token, WebClient client, PermissionCodec permissionCodec) {
+    public UserMenuRequest(String clientId, String token, WebClient client) {
         super(token, client);
         this.clientId = clientId;
-        this.permissionCodec = permissionCodec;
     }
 
     @Override
@@ -47,16 +42,6 @@ public class UserMenuRequest extends ApiRequest<Flux<MenuView>> {
                     }
                     return msg.getResult();
                 })
-                .doOnNext(this::decodeMenu)
                 .flatMapIterable(Function.identity());
-    }
-
-    private void decodeMenu(List<MenuView> menuList) {
-        for (MenuView menu : menuList) {
-            if (CollectionUtils.isNotEmpty(menu.getChildren())) {
-                decodeMenu(menu.getChildren());
-            }
-            menu.decodePermission(permissionCodec);
-        }
     }
 }

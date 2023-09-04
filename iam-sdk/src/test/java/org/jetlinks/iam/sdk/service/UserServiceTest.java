@@ -63,7 +63,6 @@ public class UserServiceTest {
                 .getCurrentAuthentication(exchange)
                 .map(auth -> auth.getPermissions().get(0).getId())
                 .as(StepVerifier::create)
-                // 解码正常: device@sdk -> device
                 .expectNext("device")
                 .verifyComplete();
     }
@@ -89,7 +88,6 @@ public class UserServiceTest {
                 .getCurrentMenu(exchange)
                 .map(menuView -> menuView.getChildren().get(0).getAssetType())
                 .as(StepVerifier::create)
-                // 解码正常: device@sdk -> device
                 .expectNext("device")
                 .verifyComplete();
     }
@@ -111,10 +109,8 @@ public class UserServiceTest {
         MenuEntity menuEntity = new MenuEntity();
         Mockito.when(menuService.getAllMenu()).thenReturn(Collections.singletonList(menuEntity));
 
-        PermissionCodec codec = new DefaultPermissionCodec("sdk", menuService);
-
         return new UserService(
-                config, new UserRequestSender(), ssoService, apiClientService, codec
+                config, new UserRequestSender(), ssoService, apiClientService
         );
     }
 
