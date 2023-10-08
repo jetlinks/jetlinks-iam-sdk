@@ -1,0 +1,67 @@
+{
+  "user": {
+    "id": "eae18bc41e1434dd98fa2dd989531da8",
+    "username": "sdk",
+    "name": "sdk-test",
+    "userType": "user",
+    "options": null,
+    "type": "user"
+  },
+  "permissions": [
+    {
+      "id": "device@sdk",
+      "name": "设备管理",
+      "actions": [
+        "query",
+        "save",
+        "update"
+      ],
+      "dataAccesses": [],
+      "options": null
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "eae18bc41e1434dd98fa2dd989531da8",
+      "username": "sdk",
+      "name": "sdk-test",
+      "userType": "user",
+      "options": null,
+      "type": "user"
+    },
+    {
+      "id": "eae18bc41e1434dd98fa2dd989531da8",
+      "name": "sdk-test",
+      "type": {
+        "id": "user",
+        "name": "user"
+      },
+      "options": null
+    },
+    {
+      "id": "1691699855782903808",
+      "name": "第三方角色",
+      "type": {
+        "id": "role",
+        "name": "role"
+      },
+      "options": {
+        "dataAccess": [
+          {
+            "accesses": [
+              {
+                "name": "全部数据",
+                "supportId": "ignore",
+                "priority": 2147483647,
+                "enabled": false,
+                "granted": true
+              }
+            ],
+            "assetType": "device"
+          }
+        ]
+      }
+    }
+  ],
+  "attributes": {}
+}
