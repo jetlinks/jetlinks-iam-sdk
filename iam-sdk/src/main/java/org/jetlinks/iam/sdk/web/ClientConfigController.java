@@ -1,13 +1,14 @@
 package org.jetlinks.iam.sdk.web;
 
+import com.alibaba.fastjson.JSONObject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import org.hswebframework.web.bean.FastBeanCopier;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.entity.Parameter;
+import org.jetlinks.iam.core.entity.ResponseMessage;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,7 +23,7 @@ import java.util.List;
  */
 @RestController
 @AllArgsConstructor
-@Tag(name = "用户授权接口")
+@Tag(name = "客户端应用接口")
 @RequestMapping("/client/config")
 public class ClientConfigController {
 
@@ -30,8 +31,8 @@ public class ClientConfigController {
 
     @GetMapping
     @Operation(summary = "查询客户端应用配置")
-    public Mono<ConfigInfo> getClientConfig() {
-        return Mono.just(ConfigInfo.of(config));
+    public ResponseMessage<ConfigInfo> getClientConfig() {
+        return ResponseMessage.ok(ConfigInfo.of(config));
     }
 
     @Getter
@@ -68,7 +69,7 @@ public class ClientConfigController {
         private String menuUrl;
 
         public static ConfigInfo of(ApiClientConfig config) {
-            return FastBeanCopier.copy(config, new ConfigInfo());
+            return JSONObject.parseObject(JSONObject.toJSONString(config), ConfigInfo.class);
         }
     }
 

@@ -1,41 +1,46 @@
 package org.jetlinks.iam.core.request;
 
-import org.hswebframework.web.crud.web.ResponseMessage;
-import org.hswebframework.web.exception.BusinessException;
+import org.jetlinks.iam.core.entity.ResponseMessage;
 import org.jetlinks.iam.core.entity.UserDetail;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * 查询用户详情.
  *
  * @author zhangji 2023/8/10
  */
-public class UserDetailRequest extends ApiRequest<Mono<UserDetail>> {
+public class UserDetailRequest extends ApiRequest<UserDetail> {
 
 
-    public UserDetailRequest(String token, WebClient client) {
-        super(token, client);
+    public UserDetailRequest(String token, RestTemplate restTemplate) {
+        super(token, restTemplate);
     }
 
     @Override
-    public Mono<UserDetail> execute() {
-        return getClient()
-                .get()
-                .uri("/user/detail")
-                .headers(headers -> headers.setBearerAuth(getToken()))
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<ResponseMessage<UserDetail>>() {
-                })
-                .mapNotNull(msg -> {
-                    if (msg.getStatus() != 200) {
-                        throw new BusinessException(msg.getMessage());
-                    }
-                    if (msg.getResult() == null) {
-                        throw new BusinessException("查询用户信息失败");
-                    }
-                    return msg.getResult();
-                });
+    public UserDetail execute() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getToken());
+        HttpEntity<?> request = new HttpEntity<>(headers);
+        ResponseEntity<ResponseMessage<UserDetail>> response = this
+                .getRestTemplate()
+                .exchange(
+                        "/user/detail",
+                        HttpMethod.GET,
+                        request,
+                        new ParameterizedTypeReference<ResponseMessage<UserDetail>>() {
+                        }
+                );
+        if (response.getStatusCodeValue() != 200) {
+            throw new RuntimeException(response.getBody() == null ? "" : response.getBody().getMessage());
+        }
+        if (response.getBody() == null) {
+            throw new RuntimeException("查询用户信息失败");
+        }
+        return response.getBody().getResult();
     }
 }

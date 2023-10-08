@@ -1,23 +1,21 @@
 package org.jetlinks.iam.core.service;
 
-import io.netty.buffer.ByteBufAllocator;
-import org.hswebframework.web.authorization.Authentication;
 import org.jetlinks.iam.core.command.GetWebsocketClient;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
+import org.jetlinks.iam.core.entity.Authentication;
+import org.jetlinks.iam.core.websocket.ApplicationWebSocketClient;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.core.io.buffer.NettyDataBufferFactory;
-import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.WebSocketMessage;
-import org.springframework.web.reactive.socket.WebSocketSession;
-import org.springframework.web.reactive.socket.client.WebSocketClient;
-import reactor.core.publisher.Flux;
+import org.springframework.core.io.Resource;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
+import org.springframework.web.socket.WebSocketSession;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.net.URI;
+import java.io.IOException;
 
 /**
  * WebSocket客户端单元测试.
@@ -27,7 +25,7 @@ import java.net.URI;
 public class ApiClientAgentTest {
 
     @Test
-    public void test() {
+    public void test() throws Exception {
         ApiClientConfig config = new ApiClientConfig();
 
         ApiClientSsoService ssoService = Mockito.mock(ApiClientSsoService.class);
@@ -36,10 +34,7 @@ public class ApiClientAgentTest {
                 .thenReturn(Mono.empty());
 
         ApiClientService apiClientService = Mockito.mock(ApiClientService.class);
-        WebSocketClient webSocketClient = Mockito.mock(WebSocketClient.class);
-        Mockito
-                .when(webSocketClient.execute(Mockito.any(URI.class), Mockito.any(WebSocketHandler.class)))
-                .thenReturn(Mono.empty());
+        ApplicationWebSocketClient webSocketClient = Mockito.mock(ApplicationWebSocketClient.class);
         Mockito.when(apiClientService.execute(Mockito.any(GetWebsocketClient.class)))
                .thenReturn(Mono.just(webSocketClient));
 
@@ -52,20 +47,13 @@ public class ApiClientAgentTest {
 
         ApiClientAgent.ProxyWebSocketHandler handler = new ApiClientAgent.ProxyWebSocketHandler();
         WebSocketSession session = Mockito.mock(WebSocketSession.class);
-        Mockito.when(session.send(Mockito.any())).thenReturn(Mono.empty());
-        Mockito.when(session.receive()).thenReturn(getWebSocketMessage());
-        handler.handle(session)
-               .as(StepVerifier::create)
-               .verifyComplete();
-
+        Mockito.when(session.getId()).thenReturn("test");
+        handler.handleMessage(session, getWebSocketMessage());
     }
 
-    private Flux<WebSocketMessage> getWebSocketMessage() {
-        return DataBufferUtils
-                .read(new ClassPathResource("websocket_response.json"),
-                      new NettyDataBufferFactory(ByteBufAllocator.DEFAULT),
-                      1024)
-                .map(dataBuffer -> new WebSocketMessage(WebSocketMessage.Type.TEXT, dataBuffer));
+    private WebSocketMessage getWebSocketMessage() throws IOException {
+        Resource resource = new ClassPathResource("websocket_response.json");
+        return new TextMessage(StreamUtils.copyToByteArray(resource.getInputStream()));
     }
 
 }

@@ -1,10 +1,8 @@
 package org.jetlinks.iam.core.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
-import org.hswebframework.web.bean.FastBeanCopier;
 
 import java.io.Serializable;
 import java.util.List;

@@ -1,6 +1,8 @@
 package org.jetlinks.iam.core.entity;
 
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -8,9 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.collections4.CollectionUtils;
-import org.hswebframework.web.api.crud.entity.GenericTreeSortSupportEntity;
-import org.hswebframework.web.bean.FastBeanCopier;
-import org.hswebframework.web.i18n.LocaleUtils;
 import org.jetlinks.iam.core.enums.AccessSupportState;
 
 import javax.validation.constraints.NotBlank;
@@ -27,6 +26,9 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 public class MenuView extends GenericTreeSortSupportEntity<String> {
+
+    @Schema(description = "ID")
+    private String id;
 
     /**
      * 集成其他应用的菜单时的应用ID.
@@ -61,6 +63,7 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
 
     @Schema(description = "数据权限控制")
     @JSONField(name = "access_support")
+    @JsonFormat(shape = JsonFormat.Shape.OBJECT)
     private AccessSupportState accessSupport;
 
     @Schema(description = "资产类型")
@@ -131,38 +134,6 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
         return this
                 .withGrantedButtons(granted.getButtons())
                 .withGrantedAssetAccess(granted.getGrantedAssetAccesses());
-    }
-
-    public MenuView withAccessDescription(Locale locale,
-                                          Function<String, MenuView> menuGetter) {
-        if (accessSupport == null) {
-            return this;
-        }
-        String i18nCode;
-        Object[] args;
-        String defaultMessage;
-        if (accessSupport == AccessSupportState.indirect) {
-            i18nCode = "menu.access.indirect.description";
-            if (CollectionUtils.isNotEmpty(indirectMenus)) {
-                args = new Object[1];
-                args[0] = indirectMenus
-                        .stream()
-                        .map(menuGetter)
-                        .filter(Objects::nonNull)
-                        .map(MenuView::getName)
-                        .collect(Collectors.joining(","));
-                defaultMessage = "此菜单使用[" + args[0] + "]进行数据权限控制.";
-            } else {
-                args = new Object[0];
-                defaultMessage = "此菜单使用其他功能进行数据权限控制.";
-            }
-        } else {
-            i18nCode = "menu.access." + accessSupport.name() + ".description";
-            args = new Object[0];
-            defaultMessage = "此菜单" + accessSupport.getText() + "数据权限控制";
-        }
-        setAccessDescription(LocaleUtils.resolveMessage(i18nCode, locale, defaultMessage, args));
-        return this;
     }
 
     public MenuView withGrantedAssetAccess(Collection<AssetAccess> accesses) {
@@ -261,10 +232,6 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
 
         private int priority;
 
-        public Map<String, Object> toMap() {
-            return FastBeanCopier.copy(this, HashMap::new);
-        }
-
         public AssetAccess merge(AssetAccess access) {
 
             return this;
@@ -281,10 +248,6 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
 
         public static AssetAccess of(String supportId, String name, boolean granted) {
             return new AssetAccess(supportId, name, granted);
-        }
-
-        public AssetAccess copy() {
-            return FastBeanCopier.copy(this, new AssetAccess());
         }
 
         public AssetAccess grant() {
@@ -326,15 +289,10 @@ public class MenuView extends GenericTreeSortSupportEntity<String> {
         public static ButtonView copy(ButtonView button) {
             return ButtonView.of(button.getId(), button.getName(), button.getDescription(), button.getOptions());
         }
-
-
-        public ButtonView copy() {
-            return FastBeanCopier.copy(this, new ButtonView());
-        }
     }
 
     public static MenuView of(MenuEntity entity) {
-        return FastBeanCopier.copy(entity, new MenuView());
+        return JSONObject.parseObject(JSONObject.toJSONString(entity), MenuView.class);
     }
 
 }

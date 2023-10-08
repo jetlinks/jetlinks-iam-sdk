@@ -1,16 +1,16 @@
 package org.jetlinks.iam.core.service;
 
-import org.hswebframework.web.exception.I18nSupportException;
 import org.jetlinks.iam.core.command.Command;
 import org.jetlinks.iam.core.command.GetApiClient;
 import org.jetlinks.iam.core.command.GetWebsocketClient;
 import org.jetlinks.iam.core.command.NotifySsoCommand;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.entity.SsoResult;
+import org.jetlinks.iam.core.utils.ValidatorUtils;
 import org.jetlinks.iam.core.websocket.ApplicationWebSocketClient;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
-import org.springframework.web.reactive.socket.client.WebSocketClient;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
@@ -22,24 +22,24 @@ import javax.annotation.Nonnull;
  */
 public class ApiClientService {
 
-    private final WebClient.Builder clientBuilder;
+    private final RestTemplateBuilder clientBuilder;
 
     private final ApiClientSsoService apiClientSsoService;
 
-    private Mono<WebClient> clientMono;
+    private RestTemplate client;
 
-    private Mono<WebSocketClient> socketClientMono;
+    private Mono<ApplicationWebSocketClient> socketClientMono;
 
     private final ApiClientConfig config;
 
     public ApiClientService(ApiClientSsoService apiClientSsoService,
-                            WebClient.Builder clientBuilder,
+                            RestTemplateBuilder clientBuilder,
                             ApiClientConfig config) {
         this.apiClientSsoService = apiClientSsoService;
-        this.clientBuilder = clientBuilder.clone();
+        this.clientBuilder = clientBuilder;
         this.config = config;
 
-        config.validate();
+        ValidatorUtils.validate(config);
     }
 
     @Nonnull
@@ -58,34 +58,32 @@ public class ApiClientService {
     }
 
     protected <R> R requestUnknownCommand(Command<R> command) {
-        throw new I18nSupportException("error.application.command.unsupported");
+        throw new RuntimeException("error.application.command.unsupported");
     }
 
     /**
      * @return api客户端
      */
-    private Mono<WebClient> getApiClient() {
-        return clientMono == null ? clientMono = createApiClient(config) : clientMono;
+    private RestTemplate getApiClient() {
+        return client == null ? client = createApiClient(config) : client;
     }
 
-    protected Mono<WebClient> createApiClient(ApiClientConfig config) {
-        return Mono.just(
-                config.createWebClient(clientBuilder.clone())
-        );
+    protected RestTemplate createApiClient(ApiClientConfig config) {
+        return config.createWebClient(clientBuilder);
     }
 
     /**
      * @return WebSocket客户端
      */
-    private Mono<WebSocketClient> getWebSocketClient() {
+    private Mono<ApplicationWebSocketClient> getWebSocketClient() {
         return socketClientMono == null ? socketClientMono = createWebSocketClient(config) : socketClientMono;
     }
 
-    protected Mono<WebSocketClient> createWebSocketClient(ApiClientConfig config) {
+    protected Mono<ApplicationWebSocketClient> createWebSocketClient(ApiClientConfig config) {
         return Mono.just(new ApplicationWebSocketClient(
                 clientBuilder.build(),
                 config,
-                new ReactorNettyWebSocketClient()
+                new StandardWebSocketClient()
         ));
     }
 
@@ -96,8 +94,6 @@ public class ApiClientService {
      * @return 回调结果
      */
     private Mono<SsoResult> handleSsoNotify(NotifySsoCommand command) {
-        return this
-                .execute(new GetApiClient())
-                .flatMap(client -> apiClientSsoService.handleSsoNotify(command, client));
+        return apiClientSsoService.handleSsoNotify(command, this.execute(new GetApiClient()));
     }
 }

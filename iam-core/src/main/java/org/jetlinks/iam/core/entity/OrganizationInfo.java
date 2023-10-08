@@ -3,8 +3,6 @@ package org.jetlinks.iam.core.entity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
-import org.hswebframework.web.api.crud.entity.EntityFactoryHolder;
-import org.hswebframework.web.authorization.Dimension;
 
 /**
  * 组织信息.
@@ -29,9 +27,5 @@ public class OrganizationInfo {
 
     @Schema(description = "序号")
     private long sortIndex;
-
-    public static OrganizationInfo of() {
-        return EntityFactoryHolder.newInstance(OrganizationInfo.class, OrganizationInfo::new);
-    }
 
 }

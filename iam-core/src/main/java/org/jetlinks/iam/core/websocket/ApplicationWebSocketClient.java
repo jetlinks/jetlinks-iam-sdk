@@ -1,15 +1,17 @@
 package org.jetlinks.iam.core.websocket;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.entity.OAuth2AccessToken;
 import org.springframework.http.HttpHeaders;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.client.WebSocketClient;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.socket.client.WebSocketClient;
+import org.springframework.web.socket.client.WebSocketConnectionManager;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.util.UriComponentsBuilder;
-import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.net.URI;
@@ -19,29 +21,28 @@ import java.net.URI;
  *
  * @author zhangji 2023/8/18
  */
+@Slf4j
 @AllArgsConstructor
-public class ApplicationWebSocketClient implements WebSocketClient {
+public class ApplicationWebSocketClient extends StandardWebSocketClient {
 
-    private final WebClient tokenClient;
+    private final RestTemplate restTemplate;
     private final ApiClientConfig apiClientConfig;
     private final WebSocketClient detect;
 
-    @Override
-    @Nonnull
-    public Mono<Void> execute(@Nonnull URI url, @Nonnull WebSocketHandler handler) {
 
-        return execute(url, HttpHeaders.EMPTY, handler);
+    public void execute(@Nonnull URI url, @Nonnull WebSocketHandler handler) throws Exception {
+        execute(url, HttpHeaders.EMPTY, handler);
     }
 
-    @Override
-    @Nonnull
-    public Mono<Void> execute(@Nonnull URI url, @Nonnull HttpHeaders headers, @Nonnull WebSocketHandler handler) {
+    public void execute(@Nonnull URI url,
+                        @Nonnull HttpHeaders headers,
+                        @Nonnull WebSocketHandler handler) throws Exception {
 
         URI basePath = URI.create(apiClientConfig.getServerApiPath() + url);
 
         URI uri = UriComponentsBuilder
                 .fromUri(basePath)
-                .scheme(basePath.getScheme())
+                .scheme("http".equalsIgnoreCase(basePath.getScheme()) ? "ws" : "wss")
                 .build()
                 .toUri();
 
@@ -59,26 +60,26 @@ public class ApplicationWebSocketClient implements WebSocketClient {
                     .forEach(header -> httpHeaders.set(header.getKey(), header.getValue()));
         }
 
-        return apiClientConfig
-                .requestToken(tokenClient)
-                .flatMap(token -> executeWithToken(token, uri, httpHeaders, handler));
+        OAuth2AccessToken token = apiClientConfig.requestToken(restTemplate);
+        executeWithToken(token, uri, httpHeaders, handler);
     }
 
-    public Mono<Void> executeWithToken(OAuth2AccessToken token, @Nonnull URI url, @Nonnull HttpHeaders headers, @Nonnull WebSocketHandler handler) {
+    public void executeWithToken(OAuth2AccessToken token,
+                                 @Nonnull URI url,
+                                 @Nonnull HttpHeaders headers,
+                                 @Nonnull WebSocketHandler handler) {
         headers.setBearerAuth(token.getAccessToken());
 
-        return detect.execute(url, headers, handler);
+        WebSocketConnectionManager manager = new WebSocketConnectionManager(detect, handler, url.toString());
+        manager.getHeaders().setBearerAuth(token.getAccessToken());
+        manager.start();
     }
 
-    public Mono<HttpHeaders> installHttpHeaders(HttpHeaders httpHeaders) {
-        return apiClientConfig
-                .requestToken(tokenClient)
-                .map(token -> {
-                    httpHeaders.setBearerAuth(token.getAccessToken());
-                    return httpHeaders;
-                });
+    public HttpHeaders installHttpHeaders(HttpHeaders httpHeaders) throws Exception {
+        OAuth2AccessToken token = apiClientConfig.requestToken(restTemplate);
+        httpHeaders.setBearerAuth(token.getAccessToken());
+        return httpHeaders;
     }
-
 
 }
 

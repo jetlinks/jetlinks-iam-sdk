@@ -7,14 +7,14 @@ import org.jetlinks.iam.core.command.GetWebsocketClient;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.websocket.SubscribeRequest;
 import org.jetlinks.iam.core.websocket.SubscribeResponse;
-import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.WebSocketSession;
+import org.springframework.web.socket.*;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.concurrent.Queues;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.UUID;
@@ -88,9 +88,15 @@ public class ApiClientAgent {
                 .merge(
                         clientService
                                 .execute(new GetWebsocketClient())
-                                .flatMap(webSocketClient -> webSocketClient
-                                        .execute(URI.create("/messaging"), handler)
-                                        .then(Mono.empty())
+                                .flatMap(webSocketClient -> Mono
+                                        .defer(() -> {
+                                            try {
+                                                webSocketClient.execute(URI.create("/messaging"), handler);
+                                            } catch (Exception e) {
+                                                return Mono.error(e);
+                                            }
+                                            return Mono.empty();
+                                        })
                                         .doAfterTerminate(handler::dispose)),
                         handler.receiver.asFlux()
                 )
@@ -111,34 +117,14 @@ public class ApiClientAgent {
         private final Sinks.Many<ProxyData> receiver = createMany();
         private final Sinks.Many<String> sender = createMany();
 
+        private Disposable disposable;
+
         private WebSocketSession session;
 
-        @Override
-        @NonNull
-        public Mono<Void> handle(WebSocketSession session) {
-            String sessionId = UUID.randomUUID().toString();
-            receiver.emitNext(new ProxyData(sessionId, ProxyDataType.connected, null),
-                              (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED);
-            closeSession();
-            this.session = session;
-            return Flux.merge(
-                    session.send(sender.asFlux().map(session::textMessage)),
-                    session
-                            .receive()
-                            .doOnNext(msg -> receiver
-                                    .emitNext(new ProxyData(
-                                                      sessionId,
-                                                      ProxyDataType.data,
-                                                      msg.getPayloadAsText()
-                                              ),
-                                              (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED)))
-                       .then();
-
-        }
-
+        @SneakyThrows
         private void closeSession() {
             if (this.session != null) {
-                this.session.close().subscribe();
+                this.session.close();
             }
         }
 
@@ -146,7 +132,56 @@ public class ApiClientAgent {
         public void dispose() {
             receiver.tryEmitComplete();
             sender.tryEmitComplete();
+            if (disposable != null && !disposable.isDisposed()) {
+                disposable.dispose();
+            }
             closeSession();
+        }
+
+        @Override
+        public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+            String sessionId = UUID.randomUUID().toString();
+            receiver.emitNext(new ProxyData(sessionId, ProxyDataType.connected, null),
+                              (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED);
+            closeSession();
+            this.session = session;
+
+            disposable = sender
+                    .asFlux()
+                    .doOnNext(msg -> {
+                        try {
+                            session.sendMessage(new TextMessage(msg));
+                        } catch (IOException e) {
+                            log.error("api client send websocket message error", e);
+                        }
+                    })
+                    .subscribe();
+        }
+
+        @Override
+        public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
+            receiver
+                    .emitNext(new ProxyData(
+                                      session.getId(),
+                                      ProxyDataType.data,
+                                      (String) message.getPayload()
+                              ),
+                              (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED);
+        }
+
+        @Override
+        public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+            receiver.emitError(exception, (signal, failure) -> failure == Sinks.EmitResult.FAIL_NON_SERIALIZED);
+        }
+
+        @Override
+        public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
+            closeSession();
+        }
+
+        @Override
+        public boolean supportsPartialMessages() {
+            return false;
         }
     }
 

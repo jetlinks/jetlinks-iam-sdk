@@ -1,6 +1,6 @@
 package org.jetlinks.iam.core.filter;
 
-import org.hswebframework.web.authorization.token.ParsedToken;
+import org.jetlinks.iam.core.token.ParsedToken;
 import org.jetlinks.iam.core.utils.TokenUtils;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;

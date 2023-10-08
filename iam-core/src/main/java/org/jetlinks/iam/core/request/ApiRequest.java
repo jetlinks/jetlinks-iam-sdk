@@ -3,7 +3,7 @@ package org.jetlinks.iam.core.request;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetlinks.iam.core.command.Command;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * 应用请求定义.
@@ -16,11 +16,11 @@ public abstract class ApiRequest<T> implements Command<T> {
 
     private String token;
 
-    private WebClient client;
+    private RestTemplate restTemplate;
 
-    public ApiRequest(String token, WebClient client) {
+    public ApiRequest(String token, RestTemplate restTemplate) {
         this.token = token;
-        this.client = client;
+        this.restTemplate = restTemplate;
     }
 
     public abstract T execute();

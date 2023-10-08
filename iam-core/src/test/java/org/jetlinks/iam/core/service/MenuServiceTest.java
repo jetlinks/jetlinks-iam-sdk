@@ -4,7 +4,6 @@ import org.jetlinks.iam.core.configuration.MenuProperties;
 import org.jetlinks.iam.core.entity.MenuEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,7 +17,7 @@ import java.util.List;
 public class MenuServiceTest {
 
     @Test
-    public void  test() {
+    public void test() {
         MenuProperties menuProperties = new MenuProperties();
         MenuEntity menu = new MenuEntity();
         menu.setId("test");

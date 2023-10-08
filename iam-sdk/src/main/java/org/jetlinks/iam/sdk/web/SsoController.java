@@ -8,8 +8,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 单点登录回调接口.
@@ -26,16 +30,25 @@ public class SsoController {
 
     @GetMapping("/notify")
     @Operation(summary = "登录结果通知并跳转页面")
-    public Mono<Void> handleGetNotify(ServerWebExchange exchange) {
+    public Mono<Void> handleGetNotify(HttpServletRequest request, HttpServletResponse response) {
         return ssoService
-                .handleSsoNotify(exchange, exchange.getRequest().getQueryParams().toSingleValueMap());
+                .handleSsoNotify(toSingleMap(request.getParameterMap()), response);
     }
 
     @PostMapping("/notify")
     @Operation(summary = "(POST)登录结果通知并跳转页面")
-    public Mono<Void> handlePostNotify(ServerWebExchange exchange) {
+    public Mono<Void> handlePostNotify(HttpServletRequest request, HttpServletResponse response) {
         return ssoService
-                .handleSsoNotify(exchange, exchange.getRequest().getQueryParams().toSingleValueMap());
+                .handleSsoNotify(toSingleMap(request.getParameterMap()), response);
+    }
+
+    private Map<String, String> toSingleMap(Map<String, String[]> parameterMap) {
+        if (parameterMap == null || parameterMap.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<String, String> map = new HashMap<>(parameterMap.size());
+        parameterMap.forEach((key, value) -> map.put(key, value == null || value.length == 0 ? "" : value[0]));
+        return map;
     }
 
 }

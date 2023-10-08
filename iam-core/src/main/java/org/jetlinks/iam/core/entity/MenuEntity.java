@@ -3,14 +3,16 @@ package org.jetlinks.iam.core.entity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.CollectionUtils;
-import org.hswebframework.web.api.crud.entity.GenericTreeSortSupportEntity;
-import org.hswebframework.web.utils.DigestUtils;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.enums.AccessSupportState;
+import org.jetlinks.iam.core.utils.ValidatorUtils;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.BiPredicate;
 
@@ -102,7 +104,12 @@ public class MenuEntity extends GenericTreeSortSupportEntity<String> {
     }
 
     public static String generateHexId(String boardId, String appId, String owner) {
-        return DigestUtils.md5Hex(String.join(boardId, "|", appId, "|", owner));
+        String key = String.join(boardId, "|", appId, "|", owner);
+        return Hex.encodeHexString(
+                DigestUtils.digest(
+                        DigestUtils.getMd5Digest(), key.getBytes(StandardCharsets.UTF_8)
+                )
+        );
     }
 
     public boolean isSupportDataAccess() {
@@ -148,7 +155,7 @@ public class MenuEntity extends GenericTreeSortSupportEntity<String> {
         if (getId() == null) {
             generateId();
         }
-        tryValidate();
+        ValidatorUtils.validate(this);
         return this;
     }
 }

@@ -1,14 +1,15 @@
 package org.jetlinks.iam.core.configuration;
 
-import org.hswebframework.web.authorization.token.UserTokenManager;
-import org.hswebframework.web.authorization.token.UserTokenReactiveAuthenticationSupplier;
 import org.jetlinks.iam.core.filter.ApiClientTokenFilter;
 import org.jetlinks.iam.core.service.*;
+import org.jetlinks.iam.core.token.AppUserTokenManager;
+import org.jetlinks.iam.core.token.DefaultUserTokenManager;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  * 应用配置.
@@ -20,18 +21,23 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class ApiClientConfiguration {
 
     @Bean
-    public ApiClientSsoService apiClientSsoService(UserTokenManager userTokenManager,
+    @ConditionalOnMissingBean(AppUserTokenManager.class)
+    public AppUserTokenManager appUserTokenManager() {
+        return new DefaultUserTokenManager();
+    }
+
+    @Bean
+    public ApiClientSsoService apiClientSsoService(AppUserTokenManager userTokenManager,
                                                    UserRequestSender userService,
-                                                   ApiClientConfig config,
-                                                   UserTokenReactiveAuthenticationSupplier authenticationSupplier) {
-        return new ApiClientSsoService(userTokenManager, userService, config, authenticationSupplier);
+                                                   ApiClientConfig config) {
+        return new ApiClientSsoService(userTokenManager, userService, config);
     }
 
     @Bean
     public ApiClientService apiClientService(ApiClientSsoService apiClientSsoService,
-                                             WebClient.Builder clientBuilder,
+                                             RestTemplateBuilder builder,
                                              ApiClientConfig config) {
-        return new ApiClientService(apiClientSsoService, clientBuilder, config);
+        return new ApiClientService(apiClientSsoService, builder, config);
     }
 
     @Bean

@@ -2,17 +2,17 @@ package org.jetlinks.iam.sdk.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.net.URLCodec;
-import org.hswebframework.utils.RandomUtil;
 import org.jetlinks.iam.core.command.NotifySsoCommand;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
 import org.jetlinks.iam.core.service.ApiClientService;
 import org.jetlinks.iam.core.service.SsoHandler;
+import org.jetlinks.iam.core.utils.RandomUtil;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
+import javax.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,15 +44,15 @@ public class SsoService {
     }
 
     /**
-     * @param parameters 自定义请求参数
+     * @param queryString 自定义请求参数
      * @return 单点登录地址
      */
-    public Mono<URI> requestSsoUri(Map<String, String> parameters) {
+    public Mono<URI> requestSsoUri(String queryString) {
         String state = RandomUtil.randomChar(6);
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(config.getClientApiPath())
                 .path("/application/sso/notify");
-        parameters.forEach((k, v) -> builder.queryParam(k, urlEncode(v)));
+        builder.query(urlEncode(queryString));
 
         return Mono
                 .just(
@@ -73,12 +73,11 @@ public class SsoService {
     /**
      * 处理登录后的回调
      *
-     * @param exchange  请求
      * @param parameter 请求参数
+     * @param response  响应
      * @return Void
      */
-    public Mono<Void> handleSsoNotify(ServerWebExchange exchange,
-                                      Map<String, String> parameter) {
+    public Mono<Void> handleSsoNotify(Map<String, String> parameter, HttpServletResponse response) {
 
         String redirect = parameter.get("redirect");
         if (null == redirect) {
@@ -98,8 +97,8 @@ public class SsoService {
                             .queryParam("redirect", urlEncode(sourceRedirect))
                             .build(true)
                             .toUri();
-                    exchange.getResponse().setStatusCode(HttpStatus.FOUND);
-                    exchange.getResponse().getHeaders().setLocation(uri);
+                    response.setStatus(HttpStatus.FOUND.value());
+                    response.setHeader("Location", uri.toString());
                 })
                 .then();
     }

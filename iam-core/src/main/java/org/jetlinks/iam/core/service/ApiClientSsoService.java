@@ -1,20 +1,18 @@
 package org.jetlinks.iam.core.service;
 
-import org.hswebframework.web.authorization.Authentication;
-import org.hswebframework.web.authorization.token.ParsedToken;
-import org.hswebframework.web.authorization.token.UserTokenManager;
-import org.hswebframework.web.authorization.token.UserTokenReactiveAuthenticationSupplier;
 import org.jetlinks.iam.core.command.NotifySsoCommand;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
+import org.jetlinks.iam.core.entity.Authentication;
 import org.jetlinks.iam.core.entity.OAuth2AccessToken;
 import org.jetlinks.iam.core.entity.SsoResult;
 import org.jetlinks.iam.core.request.AuthenticationRequest;
 import org.jetlinks.iam.core.request.UserDetailRequest;
-import org.springframework.http.MediaType;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.jetlinks.iam.core.token.AppUserTokenManager;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
 
 import java.util.Map;
 
@@ -25,47 +23,45 @@ import java.util.Map;
  */
 public class ApiClientSsoService {
 
-    private final UserTokenManager userTokenManager;
+    private final AppUserTokenManager userTokenManager;
 
     private final UserRequestSender userService;
 
     private final ApiClientConfig config;
 
-    private final UserTokenReactiveAuthenticationSupplier authenticationSupplier;
-
-    public ApiClientSsoService(UserTokenManager userTokenManager,
+    public ApiClientSsoService(AppUserTokenManager userTokenManager,
                                UserRequestSender userService,
-                               ApiClientConfig config,
-                               UserTokenReactiveAuthenticationSupplier authenticationSupplier) {
+                               ApiClientConfig config) {
         this.userTokenManager = userTokenManager;
         this.userService = userService;
         this.config = config;
-        this.authenticationSupplier = authenticationSupplier;
     }
 
     /**
      * 处理单点登录回调
      *
-     * @param command 命令
-     * @param client  WebClient
+     * @param command      命令
+     * @param restTemplate WebClient
      * @return 回调结果
      */
-    public Mono<SsoResult> handleSsoNotify(NotifySsoCommand command, WebClient client) {
+    public Mono<SsoResult> handleSsoNotify(NotifySsoCommand command, RestTemplate restTemplate) {
         return this
-                .requestToken(command, client)
+                .requestToken(command, restTemplate)
                 // 获取用户详情
-                .flatMap(token -> userService
-                        .execute(new UserDetailRequest(token.getAccessToken(), client))
+                .flatMap(token -> Mono
+                        .fromSupplier(() -> userService
+                                .execute(new UserDetailRequest(token.getAccessToken(), restTemplate)))
                         .map(SsoResult::of)
                         .map(result -> {
                             token.setUserId(result.getUserId());
                             return result.with(token);
                         }))
                 // 获取用户权限
-                .flatMap(result -> userService
-                        .execute(new AuthenticationRequest(
-                                config.getClientId(), result.getToken().getAccessToken(), client)
-                        )
+                .flatMap(result -> Mono
+                        .fromSupplier(() -> userService
+                                .execute(new AuthenticationRequest(
+                                        config.getClientId(), result.getToken().getAccessToken(), restTemplate)
+                                ))
                         // 使用此token登录当前用户
                         .flatMap(authentication -> this.signIn(
                                 result.getToken().getAccessToken(), authentication, result.getExpiresMillis()
@@ -82,21 +78,16 @@ public class ApiClientSsoService {
      * @return Void
      */
     public Mono<Void> signIn(String token, Authentication authentication, Long expiresMillis) {
-        return userTokenManager
-                .signIn(
-                        token,
-                        "sso",
-                        authentication.getUser().getId(),
-                        expiresMillis == null ? 7200_000 : expiresMillis,
-                        authentication
-                )
-                .flatMap(userToken -> authenticationSupplier
-                        .get()
-                        .contextWrite(Context.of(
-                                ParsedToken.class,
-                                ParsedToken.of(userToken.getType(), userToken.getToken())
-                        )))
-                .then();
+        return Mono.defer(() -> {
+            userTokenManager
+                    .signIn(
+                            token,
+                            authentication.getUser().getId(),
+                            expiresMillis == null ? 7200_000 : expiresMillis,
+                            authentication
+                    );
+            return Mono.empty();
+        });
     }
 
     /**
@@ -106,36 +97,45 @@ public class ApiClientSsoService {
      * @return Void
      */
     public Mono<Void> signOut(String userId) {
-        return userTokenManager.signOutByUserId(userId);
+        return Mono.defer(() -> {
+            userTokenManager.signOutByUserId(userId);
+            return Mono.empty();
+        });
     }
 
     /**
      * 向服务器请求token
      *
-     * @param command 命令
-     * @param client  WebClient
+     * @param command      命令
+     * @param restTemplate WebClient
      * @return 单点登录token
      */
-    private Mono<OAuth2AccessToken> requestToken(NotifySsoCommand command, WebClient client) {
-        Map<String, String> parameter = command.getParameter();
+    private Mono<OAuth2AccessToken> requestToken(NotifySsoCommand command, RestTemplate restTemplate) {
+        return Mono
+                .fromSupplier(() -> {
+                    Map<String, String> parameter = command.getParameter();
 
-        String code = String.valueOf(parameter.getOrDefault("code", ""));
-        String state = String.valueOf(parameter.getOrDefault("state", ""));
+                    HttpHeaders httpHeaders = new HttpHeaders();
+                    httpHeaders.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
 
-        return client
-                .post()
-                .uri(config.getTokenRequestUrl())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(BodyInserters
-                              .fromFormData("client_id", config.getClientId())
-                              .with("client_secret", config.getClientSecret())
-                              .with("code", code)
-                              .with("state", state)
-                              .with("grant_type", "authorization_code")
-                              .with("redirect_uri", config.getRedirectUri())
-                              .with("oauth_timestamp", String.valueOf(System.currentTimeMillis()))
-                )
-                .retrieve()
-                .bodyToMono(OAuth2AccessToken.class);
+                    MultiValueMap<String, String> request = new LinkedMultiValueMap<>();
+                    request.add("client_id", config.getClientId());
+                    request.add("client_secret", config.getClientSecret());
+                    request.add("code", String.valueOf(parameter.getOrDefault("code", "")));
+                    request.add("state", String.valueOf(parameter.getOrDefault("state", "")));
+                    request.add("grant_type", "authorization_code");
+                    request.add("redirect_uri", config.getRedirectUri());
+                    request.add("oauth_timestamp", String.valueOf(System.currentTimeMillis()));
+
+                    HttpEntity<Map<String, Object>> httpEntity = new HttpEntity(request, httpHeaders);
+                    return restTemplate.exchange(config.getTokenRequestUrl(), HttpMethod.POST, httpEntity, OAuth2AccessToken.class);
+                })
+                .flatMap(response -> {
+                    if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                        return Mono.just(response.getBody());
+                    } else {
+                        return Mono.error(new RuntimeException("获取oauth2 token失败"));
+                    }
+                });
     }
 }

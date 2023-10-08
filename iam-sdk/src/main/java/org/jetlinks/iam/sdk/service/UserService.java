@@ -1,9 +1,9 @@
 package org.jetlinks.iam.sdk.service;
 
-import org.hswebframework.web.authorization.Authentication;
-import org.hswebframework.web.authorization.token.ParsedToken;
+
 import org.jetlinks.iam.core.command.GetApiClient;
 import org.jetlinks.iam.core.configuration.ApiClientConfig;
+import org.jetlinks.iam.core.entity.Authentication;
 import org.jetlinks.iam.core.entity.MenuView;
 import org.jetlinks.iam.core.entity.UserDetail;
 import org.jetlinks.iam.core.request.AuthenticationRequest;
@@ -12,11 +12,10 @@ import org.jetlinks.iam.core.request.UserMenuRequest;
 import org.jetlinks.iam.core.service.ApiClientService;
 import org.jetlinks.iam.core.service.ApiClientSsoService;
 import org.jetlinks.iam.core.service.UserRequestSender;
-import org.jetlinks.iam.core.utils.TokenUtils;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import org.jetlinks.iam.core.token.ParsedToken;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
 
 /**
  * 用户服务.
@@ -31,7 +30,7 @@ public class UserService {
 
     private final ApiClientSsoService apiClientSsoService;
 
-    private final Mono<WebClient> clientMono;
+    private final RestTemplate client;
 
     public UserService(ApiClientConfig config,
                        UserRequestSender sender,
@@ -40,54 +39,41 @@ public class UserService {
         this.config = config;
         this.sender = sender;
         this.apiClientSsoService = apiClientSsoService;
-        this.clientMono = apiClientService.execute(new GetApiClient());
+        this.client = apiClientService.execute(new GetApiClient());
     }
 
     /**
      * 查询当前用户信息
      *
-     * @param exchange 请求
+     * @param parsedToken token
      * @return 用户信息
      */
-    public Mono<UserDetail> getCurrentUserDetail(ServerWebExchange exchange) {
-        return Mono
-                .zip(parseToken(exchange), clientMono)
-                .flatMap(tp2 -> sender.execute(new UserDetailRequest(tp2.getT1().getToken(), tp2.getT2())));
+    public UserDetail getCurrentUserDetail(ParsedToken parsedToken) {
+        return sender.execute(new UserDetailRequest(parsedToken.getToken(), client));
     }
 
     /**
      * 查询当前用户菜单
      *
-     * @param exchange 请求
+     * @param parsedToken token
      * @return 菜单
      */
-    public Flux<MenuView> getCurrentMenu(ServerWebExchange exchange) {
-        return Mono
-                .zip(parseToken(exchange), clientMono)
-                .flatMapMany(tp2 -> sender.execute(new UserMenuRequest(
-                        config.getClientId(), tp2.getT1().getToken(), tp2.getT2()
-                )));
+    public List<MenuView> getCurrentMenu(ParsedToken parsedToken) {
+        return sender.execute(new UserMenuRequest(config.getClientId(), parsedToken.getToken(), client));
     }
 
     /**
      * 查询当前用户权限
      *
-     * @param exchange 请求
+     * @param parsedToken token
      * @return 权限
      */
-    public Mono<Authentication> getCurrentAuthentication(ServerWebExchange exchange) {
-        return Mono
-                .zip(parseToken(exchange), clientMono)
-                .flatMap(tp2 -> sender
-                        .execute(new AuthenticationRequest(
-                                config.getClientId(), tp2.getT1().getToken(), tp2.getT2())
-                        )
-                        .flatMap(authentication -> apiClientSsoService
-                                .signIn(tp2.getT1().getToken(), authentication, null)
-                                .thenReturn(authentication)));
-    }
-
-    private Mono<ParsedToken> parseToken(ServerWebExchange exchange) {
-        return Mono.fromSupplier(() -> TokenUtils.parseTokenHeader(exchange.getRequest()));
+    public Authentication getCurrentAuthentication(ParsedToken parsedToken) {
+        Authentication authentication = sender
+                .execute(new AuthenticationRequest(config.getClientId(), parsedToken.getToken(), client));
+        if (authentication != null) {
+            apiClientSsoService.signIn(parsedToken.getToken(), authentication, null);
+        }
+        return authentication;
     }
 }

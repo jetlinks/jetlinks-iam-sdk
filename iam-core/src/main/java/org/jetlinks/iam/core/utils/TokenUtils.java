@@ -1,10 +1,9 @@
 package org.jetlinks.iam.core.utils;
 
-import org.hswebframework.web.authorization.token.ParsedToken;
+import org.jetlinks.iam.core.token.ParsedToken;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.reactive.function.client.ClientRequest;
-import reactor.core.publisher.Mono;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
 /**
@@ -27,14 +26,14 @@ public class TokenUtils {
         return null;
     }
 
-    public static Mono<ParsedToken> parseTokenHeader(ClientRequest request) {
+    public static ParsedToken parseTokenHeader(HttpServletRequest request) {
         String token = Optional
-                .ofNullable(request.headers().getFirst(TOKEN_HEADER))
-                .orElseGet(() -> request.attribute(TOKEN_ATTRIBUTE).map(Object::toString).orElse(null));
+                .ofNullable(request.getHeader(TOKEN_HEADER))
+                .orElseGet(() -> request.getParameter(TOKEN_ATTRIBUTE));
 
         if (token != null) {
-            return Mono.just(ParsedToken.of(TOKEN_HEADER, token));
+            return ParsedToken.of(TOKEN_HEADER, token);
         }
-        return Mono.empty();
+        return null;
     }
 }

@@ -29,7 +29,11 @@
         <spring.boot.version>2.7.14</spring.boot.version>
         <reactor.version>2020.0.14</reactor.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <hsweb.framework.version>4.0.17-SNAPSHOT</hsweb.framework.version>
+        <guava.version>32.0.0-jre</guava.version>
+        <swagger.version>2.1.4</swagger.version>
+        <collections.version>4.4</collections.version>
+        <fastjson.version>1.2.83</fastjson.version>
+        <jsr305.version>3.0.2</jsr305.version>
     </properties>
 
     <dependencies>
@@ -92,23 +96,30 @@
             </dependency>
 
             <dependency>
-                <groupId>org.hswebframework.web</groupId>
-                <artifactId>hsweb-authorization-basic</artifactId>
-                <version>${hsweb.framework.version}</version>
-                <optional>true</optional>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <version>${jsr305.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>org.hswebframework.web</groupId>
-                <artifactId>hsweb-commons-crud</artifactId>
-                <version>${hsweb.framework.version}</version>
-                <scope>compile</scope>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>${fastjson.version}</version>
             </dependency>
-
             <dependency>
-                <groupId>org.hswebframework.web</groupId>
-                <artifactId>hsweb-system-authorization-api</artifactId>
-                <version>${hsweb.framework.version}</version>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${collections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-annotations</artifactId>
+                <version>${swagger.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
             </dependency>
 
         </dependencies>

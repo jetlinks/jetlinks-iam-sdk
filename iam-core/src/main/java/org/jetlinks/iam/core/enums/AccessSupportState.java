@@ -1,17 +1,15 @@
 package org.jetlinks.iam.core.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.hswebframework.web.dict.I18nEnumDict;
 
 /**
  * 菜单资产权限配置定义.
  *
  * @author zhangji 2023/8/11
  */
-@Getter
 @AllArgsConstructor
-public enum AccessSupportState implements I18nEnumDict<String> {
+public enum AccessSupportState {
     //支持
     support("支持"),
     //不支持
@@ -21,7 +19,11 @@ public enum AccessSupportState implements I18nEnumDict<String> {
 
     private final String text;
 
-    @Override
+    public String getText() {
+        return text;
+    }
+
+    @JsonValue
     public String getValue() {
         return name();
     }

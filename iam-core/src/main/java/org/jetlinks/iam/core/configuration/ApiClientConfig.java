@@ -5,22 +5,20 @@ import com.alibaba.fastjson.JSONPath;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections.CollectionUtils;
-import org.hswebframework.web.validator.ValidatorUtils;
 import org.jetlinks.iam.core.entity.OAuth2AccessToken;
 import org.jetlinks.iam.core.entity.Parameter;
-import org.jetlinks.iam.core.filter.InternalTokenExchangeFilterFunction;
+import org.jetlinks.iam.core.filter.InternalTokenExchangeCustomizer;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.http.MediaType;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.util.DefaultUriBuilderFactory;
-import org.springframework.web.util.UriComponentsBuilder;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestTemplate;
 
 import javax.validation.constraints.NotBlank;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -31,16 +29,15 @@ import java.util.List;
  * <code>
  * <p>
  * jetlinks:
- * api:
- * client:
- * config:
- * client-api-path: http://127.0.0.1:8080  #当前服务-接口地址
- * server-api-path: http://127.0.0.1:9000/api #用户中台-接口地址
- * client-id: client-id #应用ID
- * client-secret: client-secret #应用密钥
- * redirect-uri: http://127.0.0.1:8080 # 授权后的重定向地址
- * authorization-url: http://127.0.0.1:9000/#/oauth
- *
+ *   api:
+ *     client:
+ *       config:
+ *         client-api-path: http://127.0.0.1:8080  #当前服务-接口地址
+ *         server-api-path: http://127.0.0.1:9000/api #用户中台-接口地址
+ *         client-id: Ncj4hBQNAW7xPPSS #应用ID
+ *         client-secret: cmB3NRwEHTfyB7GJwm873rj3AB7S7AnY #应用密钥
+ *         redirect-uri: http://127.0.0.1:8080 # 授权后的重定向地址
+ *         authorization-url: http://127.0.0.1:9000/#/oauth
  * </code>
  *
  * @author zhangji 2023/8/3
@@ -95,6 +92,9 @@ public class ApiClientConfig implements Serializable, Cloneable {
     // 菜单接口请求地址，默认为/api/menu
     private String menuUrl;
 
+    // 连接超时时间（毫秒）
+    private long timeoutMills = 5000;
+
     public String getTokenSetUrl() {
         return StringUtils.hasText(tokenSetUrl) ? tokenSetUrl : clientApiPath + "/token-set.html";
     }
@@ -108,128 +108,89 @@ public class ApiClientConfig implements Serializable, Cloneable {
         POST_BODY
     }
 
-    public Mono<OAuth2AccessToken> refresh(OAuth2AccessToken accessToken,
-                                           WebClient webClient) {
-        WebClient.RequestHeadersSpec<?> spec;
-        if (tokenRequestType == RequestType.POST_BODY) {
-            spec = webClient
-                    .post()
-                    .uri(getTokenRequestUrl())
-                    .body(BodyInserters
-                                  .fromFormData("client_id", clientId)
-                                  .with("client_secret", clientSecret)
-                                  .with("refresh_token", accessToken.getRefreshToken())
-                                  .with("grant_type", "refresh_token")
-                                  .with("redirect_uri", clientApiPath + redirectUri)
-                                  .with("oauth_timestamp", String.valueOf(System.currentTimeMillis()))
-                    );
+    public OAuth2AccessToken refresh(OAuth2AccessToken accessToken,
+                                     RestTemplate restTemplate) {
+        MultiValueMap<String, String> request = new LinkedMultiValueMap<>();
+        request.add("client_id", clientId);
+        request.add("client_secret", clientSecret);
+        request.add("refresh_token", accessToken.getRefreshToken());
+        request.add("grant_type", "refresh_token");
+        request.add("redirect_uri", clientApiPath + redirectUri);
+        request.add("oauth_timestamp", String.valueOf(System.currentTimeMillis()));
+
+        ResponseEntity<String> responseEntity = requestForString(restTemplate, request);
+        if (responseEntity.getStatusCode().is2xxSuccessful()) {
+            return parseToken(responseEntity.getBody());
         } else {
-            spec = webClient
-                    .post()
-                    .uri(getTokenRequestUrl(), uriBuilder -> uriBuilder
-                            .queryParam("client_id", clientId)
-                            .queryParam("client_secret", clientSecret)
-                            .queryParam("refresh_token", accessToken.getRefreshToken())
-                            .queryParam("grant_type", "refresh_token")
-                            .queryParam("redirect_uri", clientApiPath + redirectUri)
-                            .queryParam("oauth_timestamp", System.currentTimeMillis())
-                            .build());
+            log.warn("refresh [{}] token error,{}: {}", clientId, responseEntity.getStatusCode(), responseEntity.getBody());
+            return null;
         }
-        return spec
-                .accept(MediaType.APPLICATION_JSON)
-                .exchangeToMono(response -> {
-                    if (response.statusCode().is2xxSuccessful()) {
-                        return response
-                                .bodyToMono(String.class)
-                                .mapNotNull(this::parseToken);
-                    } else {
-                        return response
-                                .bodyToMono(String.class)
-                                .doOnNext(body -> log.warn("refresh [{}] token error,{}: {}", clientId, response.statusCode(), body))
-                                .then(Mono.empty());
-                    }
-                });
     }
 
-    public Mono<OAuth2AccessToken> requestToken(WebClient webClient) {
-        WebClient.RequestHeadersSpec<?> spec;
-        if (tokenRequestType == RequestType.POST_BODY) {
-            spec = webClient
-                    .post()
-                    .uri(getTokenRequestUrl())
-                    .body(BodyInserters
-                                  .fromFormData("client_id", clientId)
-                                  .with("client_secret", clientSecret)
-                                  .with("grant_type", "client_credentials")
-                                  .with("redirect_uri", clientApiPath + redirectUri)
-                                  .with("oauth_timestamp", String.valueOf(System.currentTimeMillis()))
-                    );
-        } else {
-            spec = webClient
-                    .post()
-                    .uri(getTokenRequestUrl(), uriBuilder -> uriBuilder
-                            .queryParam("client_id", clientId)
-                            .queryParam("client_secret", clientSecret)
-                            .queryParam("redirect_uri", clientApiPath + redirectUri)
-                            .queryParam("grant_type", "client_credentials")
-                            .queryParam("oauth_timestamp", System.currentTimeMillis())
-                            .build());
-        }
-        return doRequest(spec);
+    public OAuth2AccessToken requestToken(RestTemplate restTemplate) throws Exception {
+        MultiValueMap<String, String> request = new LinkedMultiValueMap<>();
+        request.add("client_id", clientId);
+        request.add("client_secret", clientSecret);
+        request.add("grant_type", "client_credentials");
+        request.add("redirect_uri", clientApiPath + redirectUri);
+        request.add("oauth_timestamp", String.valueOf(System.currentTimeMillis()));
+
+        ResponseEntity<String> responseEntity = requestForString(restTemplate, request);
+        return handleResponse(responseEntity);
 
     }
 
-    public Mono<OAuth2AccessToken> requestToken(WebClient webClient, String code, String state, String redirectUri) {
-        WebClient.RequestHeadersSpec<?> spec;
-        if (tokenRequestType == RequestType.POST_BODY) {
-            spec = webClient
-                    .post()
-                    .uri(getTokenRequestUrl())
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(BodyInserters
-                                  .fromFormData("client_id", clientId)
-                                  .with("client_secret", clientSecret)
-                                  .with("code", code)
-                                  .with("state", state)
-                                  .with("grant_type", "authorization_code")
-                                  .with("redirect_uri", clientApiPath + redirectUri)
-                                  .with("oauth_timestamp", String.valueOf(System.currentTimeMillis()))
-                    );
-        } else {
-            spec = webClient
-                    .post()
-                    .uri(getTokenRequestUrl(), uriBuilder -> uriBuilder
-                            .queryParam("client_id", clientId)
-                            .queryParam("client_secret", clientSecret)
-                            .queryParam("code", code)
-                            .queryParam("state", state)
-                            .queryParam("grant_type", "authorization_code")
-                            .queryParam("redirect_uri", clientApiPath + redirectUri)
-                            .queryParam("oauth_timestamp", System.currentTimeMillis())
-                            .build());
-        }
-        return doRequest(spec);
+    public OAuth2AccessToken requestToken(RestTemplate restTemplate, String code, String state, String redirectUri) throws Exception {
+        MultiValueMap<String, String> request = new LinkedMultiValueMap<>();
+        request.add("client_id", clientId);
+        request.add("client_secret", clientSecret);
+        request.add("code", code);
+        request.add("state", state);
+        request.add("grant_type", "authorization_code");
+        request.add("redirect_uri", clientApiPath + redirectUri);
+        request.add("oauth_timestamp", String.valueOf(System.currentTimeMillis()));
+
+        ResponseEntity<String> responseEntity = requestForString(restTemplate, request);
+        return handleResponse(responseEntity);
     }
 
-    private Mono<OAuth2AccessToken> doRequest(WebClient.RequestHeadersSpec<?> spec) {
-        return spec
-                .accept(MediaType.APPLICATION_JSON)
-                .exchangeToMono(response -> {
-                    if (response.statusCode().is2xxSuccessful()) {
-                        return response
-                                .bodyToMono(String.class)
-                                .mapNotNull(this::parseToken);
-                    } else {
-                        return response
-                                .bodyToMono(String.class)
-                                .doOnNext(e -> log.warn("request oauth2 [{}] token error {} {} {}",
-                                                        clientId,
-                                                        getTokenRequestUrl(),
-                                                        response.statusCode(),
-                                                        e))
-                                .then(Mono.empty());
-                    }
-                });
+    private ResponseEntity<String> requestForString(RestTemplate restTemplate,
+                                                    MultiValueMap<String, String> request) {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+
+        ResponseEntity<String> response;
+        if (tokenRequestType == RequestType.POST_BODY) {
+            response = restTemplate
+                    .exchange(
+                            getTokenRequestUrl(),
+                            HttpMethod.POST,
+                            new HttpEntity<>(request, httpHeaders),
+                            String.class
+                    );
+        } else {
+            response = restTemplate
+                    .exchange(
+                            getTokenRequestUrl(),
+                            HttpMethod.POST,
+                            new HttpEntity<>(null, httpHeaders),
+                            String.class,
+                            request);
+        }
+        return response;
+    }
+
+    private OAuth2AccessToken handleResponse(ResponseEntity<String> response) throws Exception {
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return parseToken(response.getBody());
+        } else {
+            log.warn("request oauth2 [{}] token error {} {} {}",
+                     clientId,
+                     getTokenRequestUrl(),
+                     response.getStatusCode(),
+                     response.getBody());
+            throw new Exception("获取oauth2 token失败。" + response.getBody());
+        }
     }
 
     protected String getProperty(String json, String property) {
@@ -243,36 +204,12 @@ public class ApiClientConfig implements Serializable, Cloneable {
         return token.getAccessToken() == null ? null : token;
     }
 
-    public void validate() {
-        ValidatorUtils.tryValidate(this);
-    }
-
-    public WebClient createWebClient(WebClient.Builder builder) {
+    public RestTemplate createWebClient(RestTemplateBuilder builder) {
         builder = builder
-                .baseUrl(serverApiPath)
-                //透传token信息
-                .filter(new InternalTokenExchangeFilterFunction());
-
-        if (CollectionUtils.isNotEmpty(headers)) {
-            builder = builder.defaultHeaders(headers -> {
-                for (Parameter header : this.headers) {
-                    if (header.getValue() != null) {
-                        headers.set(header.getKey(), header.getValue());
-                    }
-                }
-            });
-        }
-
-        if (CollectionUtils.isNotEmpty(parameters)) {
-            UriComponentsBuilder componentsBuilder = UriComponentsBuilder.fromUriString(serverApiPath);
-            for (Parameter parameter : parameters) {
-                if (parameter.getKey() != null) {
-                    componentsBuilder.queryParam(parameter.getKey(), parameter.getValue());
-                }
-            }
-
-            builder = builder.uriBuilderFactory(new DefaultUriBuilderFactory(componentsBuilder));
-        }
+                .rootUri(serverApiPath)
+                .setConnectTimeout(Duration.ofMillis(timeoutMills))
+                .setReadTimeout(Duration.ofMillis(timeoutMills))
+                .additionalInterceptors(new InternalTokenExchangeCustomizer(headers, parameters));
 
         return builder.build();
     }
